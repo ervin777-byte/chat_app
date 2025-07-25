@@ -20,6 +20,9 @@ def login(event):
 
     try:
         user = supabase.auth.sign_in_with_password(email=email, password=password)
+        user_data = supabase.auth.user()
+        Page.navigation_stack = ["/chat"]
+        Page.go("/chat")
         Page.snack_bar = SnackBar(Text(f"Logged in as {user.user.email}"))
         Page.snack_bar.open = True
     except Exception as e:
@@ -62,4 +65,13 @@ def main(page: Page):
 
     page.add(column)
 
-flet.app(main)
+def chat_page(page: flet.Page):
+    page.title = "Chat"
+    page.add(flet.Text("Welcome to the chat page!"))
+
+routes = {
+    "/": main,
+    "/chat": chat_page,
+}
+
+flet.app(main, routes=routes)
