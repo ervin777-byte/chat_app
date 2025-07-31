@@ -14,42 +14,46 @@ supabase: Client = create_client(url, key)
 email_tf = TextField(label="Email", width=300)
 password_tf = TextField(label="Password", password=True, width=300)
 
-def login(event):
+def login(page: Page, event):
     email = email_tf.value
     password = password_tf.value
 
     try:
         user = supabase.auth.sign_in_with_password(email=email, password=password)
-        user_data = supabase.auth.user()
-        Page.navigation_stack = ["/chat"]
-        Page.go("/chat")
-        Page.snack_bar = SnackBar(Text(f"Logged in as {user.user.email}"))
-        Page.snack_bar.open = True
+        page.snack_bar = SnackBar(Text(f"Logged in as {user.user.email}"))
+        page.snack_bar.open = True
+        page.update()
+        #page.navigation_stack = ["/chat"]
+        page.go("/chat")
     except Exception as e:
-        Page.snack_bar = SnackBar(Text(str(e)))
-        Page.snack_bar.open = True
+        page.snack_bar = SnackBar(Text(str(e)))
+        page.snack_bar.open = True
+        page.update()
 
-def signup(event):
+def signup(page: Page, event):
     email = email_tf.value
     password = password_tf.value
 
     try:
         user = supabase.auth.sign_up(email=email, password=password)
-        Page.snack_bar = SnackBar(Text(f"Signed up as {user.user.email}"))
-        Page.snack_bar.open = True
+        page.snack_bar = SnackBar(Text(f"Signed up as {user.user.email}"))
+        page.snack_bar.open = True
+        page.update()
     except Exception as e:
-        Page.snack_bar = SnackBar(Text(str(e)))
-        Page.snack_bar.open = True
-
+        page.snack_bar = SnackBar(Text(str(e)))
+        page.snack_bar.open = True
+        page.update()
 
 def main(page: Page):
-
     page.title = "Authentication zone"
     page.vertical_alignment = "center"
     page.horizontal_alignment = "center"
 
-    login_btn = ElevatedButton("Login", on_click=login)
-    signup_btn = ElevatedButton("Sign Up", on_click=signup)
+    # --- Fix Starts Here ---
+
+    # 1. Define UI elements and layout first
+    login_btn = ElevatedButton("Login", on_click=lambda e: login(page, e))
+    signup_btn = ElevatedButton("Sign Up", on_click=lambda e: signup(page, e))
 
     column = Column(
         controls=[
@@ -61,17 +65,53 @@ def main(page: Page):
             ),
         ],
         spacing=20,
+        # Center the column on the page
+        horizontal_alignment=flet.CrossAxisAlignment.CENTER,
     )
 
-    page.add(column)
+    # 2. Define routing functions that USE the layout
+    def route_change(route):
+        page.views.clear()
+        if page.route == "/":
+            page.views.append(
+                flet.View(
+                    "/",
+                    [
+                        flet.AppBar(title=flet.Text("Authentication Zone"), bgcolor=flet.Colors.ON_SURFACE_VARIANT),
+                        column # Now 'column' is defined and can be used here
+                    ],
+                    vertical_alignment=flet.CrossAxisAlignment.CENTER,
+                    horizontal_alignment=flet.CrossAxisAlignment.CENTER,
+                )
+            )
+        elif page.route == "/chat":
+            page.views.append(
+                flet.View(
+                    "/chat",
+                    [
+                        flet.AppBar(title=flet.Text("Chat"), bgcolor=flet.Colors.ON_SURFACE_VARIANT),
+                        flet.Text("Welcome to the chat page!"),
+                        flet.ElevatedButton("Go back to Home", on_click=lambda e: page.go("/"))
+                    ],
+                    vertical_alignment=flet.CrossAxisAlignment.CENTER,
+                    horizontal_alignment=flet.CrossAxisAlignment.CENTER,
+                )
+            )
+        page.update()
 
-def chat_page(page: flet.Page):
-    page.title = "Chat"
-    page.add(flet.Text("Welcome to the chat page!"))
+    def view_pop(view):
+        page.views.pop()
+        top_view = page.views[-1]
+        page.go(top_view.route)
 
-routes = {
-    "/": main,
-    "/chat": chat_page,
-}
+    # 3. Assign the routing functions to the page
+    page.on_route_change = route_change
+    page.on_view_pop = view_pop
+    
+    # 4. Remove the page.add(column) call
+    # The routing system now handles displaying the column.
 
-flet.app(main, routes=routes)
+    # 5. Go to the initial route to build the first view
+    page.go(page.route)
+
+flet.app(target=main)
