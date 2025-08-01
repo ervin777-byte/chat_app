@@ -1,8 +1,12 @@
 import os
 from dotenv import load_dotenv
 import flet
-from flet import (Page, Text, TextField, ElevatedButton, Column, Container, Row, SnackBar,)
+from flet import Page
 from supabase import create_client, Client
+
+import auth
+from home import home_view
+from chat import chat_view
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
@@ -10,62 +14,24 @@ url: str = os.getenv("SUPABASE_URL")
 key: str = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
-email_tf = TextField(label="Email", width=300)
-password_tf = TextField(label="Password", password=True, width=300)
-
 def main(page: Page):
     page.title = "Authentication zone"
     page.vertical_alignment = "center"
     page.horizontal_alignment = "center"
 
-    login_btn = ElevatedButton("Login", on_click=lambda e: login(page, e))
-    signup_btn = ElevatedButton("Sign Up", on_click=lambda e: signup(page, e))
-
-    column = Column(
-        controls=[
-            email_tf,
-            password_tf,
-            Row(
-                [login_btn, signup_btn],
-                alignment="spaceBetween",
-            ),
-        ],
-        spacing=20,
-        horizontal_alignment=flet.CrossAxisAlignment.CENTER,
-    )
-
+    # Route change handler
     def route_change(route):
         page.views.clear()
         if page.route == "/":
-            page.views.append(
-                flet.View(
-                    "/",
-                    [
-                        flet.AppBar(title=flet.Text("Authentication Zone"), bgcolor=flet.Colors.RED),
-                        column # Now 'column' is defined and can be used here
-                    ],
-                    vertical_alignment=flet.CrossAxisAlignment.CENTER,
-                    horizontal_alignment=flet.CrossAxisAlignment.CENTER,
-                )
-            )
+            page.views.append(home_view(page, supabase, auth.login, auth.signup))
         elif page.route == "/chat":
-            page.views.append(
-                flet.View(
-                    "/chat",
-                    [
-                        flet.AppBar(title=flet.Text("Chat"), bgcolor=flet.Colors.PURPLE),
-                        flet.Text("Welcome to the chat page!"),
-                        flet.ElevatedButton("Go back to Home", on_click=lambda e: page.go("/"))
-                    ],
-                    vertical_alignment=flet.CrossAxisAlignment.CENTER,
-                    horizontal_alignment=flet.CrossAxisAlignment.CENTER,
-                )
-            )
+            page.views.append(chat_view(page))
         page.update()
 
+    # View pop handler
     def view_pop(view):
         page.views.pop()
-        top_view = page.views[0]
+        top_view = page.views[-1]
         page.go(top_view.route)
 
     page.on_route_change = route_change
@@ -73,34 +39,4 @@ def main(page: Page):
 
     page.go(page.route)
 
-def login(page: Page, event):
-    email = email_tf.value
-    password = password_tf.value
-
-    try:
-        user_session = supabase.auth.sign_in_with_password({"email": email, "password": password})
-        print(f"Logged in as {user_session.user.email}")
-        page.update()
-        page.go("/chat")
-    except Exception as e:
-        print(str(e))
-        page.update()
-
-def signup(page: Page, event):
-    email = email_tf.value
-    password = password_tf.value
-
-    try:
-        user = supabase.auth.sign_up({"email": email,"password": password,})
-        if user.user:
-            message = f"Signed up as {user.user.email}. Please confirm your email address."
-        else:
-            message = "Sign up failed. No user returned."
-
-        print(message)
-        page.update()
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        page.update()
-
-flet.app(target=main)
+flet.app(target=main, view=flet.WEB_BROWSER)
