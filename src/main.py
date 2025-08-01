@@ -93,7 +93,7 @@ def signup(page: Page, event):
     try:
         user = supabase.auth.sign_up({"email": email,"password": password,})
         if user.user:
-            message = f"Signed up as {user.user.email}"
+            message = f"Signed up as {user.user.email}. Please verify your email address."
         else:
             message = "Sign up failed. No user returned."
 
