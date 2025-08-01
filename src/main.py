@@ -79,11 +79,11 @@ def login(page: Page, event):
 
     try:
         user_session = supabase.auth.sign_in_with_password({"email": email, "password": password})
-        page.open = SnackBar(Text(f"Logged in as {user_session.user.email}"))
+        print(f"Logged in as {user_session.user.email}")
         page.update()
         page.go("/chat")
     except Exception as e:
-        page.open = SnackBar(Text(str(e)))
+        print(str(e))
         page.update()
 
 def signup(page: Page, event):
@@ -97,10 +97,10 @@ def signup(page: Page, event):
         else:
             message = "Sign up failed. No user returned."
 
-        page.open = SnackBar(Text(message))
+        print(message)
         page.update()
     except Exception as e:
-        page.open = SnackBar(f"Error: {str(e)}")
+        print(f"Error: {str(e)}")
         page.update()
 
 flet.app(target=main)
