@@ -22,7 +22,7 @@ def home_view(page: ft.Page, supabase, login_func, signup_func):
             message.value = "Please fill in both fields"
             page.update()
             return
-        signup_func(page, e, email, password)
+        signup_func(page, e, email, password, supabase)
 
 
     login_btn.on_click = on_login_click

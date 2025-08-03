@@ -25,7 +25,6 @@ def main(page: Page):
 
     def route_change(route):
         user_email = page.session.get("user_email")
-
         page.views.clear()
 
         if page.route == "/":
@@ -35,26 +34,17 @@ def main(page: Page):
                 page.go("/")
                 return
             page.views.append(chat_view(page, supabase, user_email))
-
+        
         page.update()
 
+    page.on_route_change = lambda e: route_change(e.route) # Simplified the async part
 
-    # Pass the 'route' attribute from the event object
-    page.on_route_change = lambda e: asyncio.create_task(route_change(e.route))
-
-    def view_pop(e): # The handler receives an event argument
-        # The view has already been popped by Flet, so we just navigate
+    def view_pop(e):
         page.go(page.views[-1].route)   
 
     page.on_view_pop = view_pop
+    
+    # This call triggers the initial page load 🚀
+    page.go(page.route)
 
-    # Defer navigation to after frontend is ready
-    async def on_connect(e):
-        # This now correctly handles the very first page load.
-        # Subsequent navigation is handled by on_route_change.
-        route_change(page.route)
-
-    # The handler for on_connect receives the event object `e`
-    page.on_connect = on_connect
-
-flet.app(target=main, view=flet.WEB_BROWSER)
+flet.app(target=main)
