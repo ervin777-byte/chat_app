@@ -1,29 +1,47 @@
-import flet
-from flet import Column, Row, TextField, ElevatedButton, View, AppBar, Text, SnackBar
+import flet as ft
 
-def home_view(page, supabase, login_fn, signup_fn):
-    email_tf = TextField(label="Email", width=300)
-    password_tf = TextField(label="Password", password=True, width=300)
+from auth import login, signup
 
-    login_btn = ElevatedButton("Login", on_click=lambda e: login_fn(page, e, email_tf, password_tf, supabase))
-    signup_btn = ElevatedButton("Sign Up", on_click=lambda e: signup_fn(page, e, email_tf, password_tf, supabase))
+def home_view(page: ft.Page, supabase, login_func, signup_func):
+    email = ft.TextField(label="Email", width=300)
+    password = ft.TextField(label="Password", width=300, password=True, can_reveal_password=True)
+    login_btn = ft.ElevatedButton(text="Login")
+    signup_btn = ft.ElevatedButton(text="Sign Up")
+    message = ft.Text("")
 
-    column = Column(
-        controls=[
-            email_tf,
-            password_tf,
-            Row([login_btn, signup_btn], alignment="spaceBetween"),
-        ],
-        spacing=20,
-        horizontal_alignment=flet.CrossAxisAlignment.CENTER,
-    )
+    def on_login_click(e):
+        if not email.value or not password.value:
+            message.value = "Please fill in both fields"
+            page.update()
+            return
+        login_func(page, e, email, password, supabase)
 
-    return View(
+
+    def on_signup_click(e):
+        if not email.value or not password.value:
+            message.value = "Please fill in both fields"
+            page.update()
+            return
+        signup_func(page, e, email, password)
+
+
+    login_btn.on_click = on_login_click
+    signup_btn.on_click = on_signup_click
+
+    return ft.View(
         "/",
         [
-            AppBar(title=Text("Authentication Zone"), bgcolor=flet.Colors.RED),
-            column
+            ft.Column(
+                [
+                    ft.Text("Welcome! Please log in or sign up", size=20),
+                    email,
+                    password,
+                    ft.Row([login_btn, signup_btn], spacing=20),
+                    message,
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                expand=True,
+            )
         ],
-        vertical_alignment=flet.CrossAxisAlignment.CENTER,
-        horizontal_alignment=flet.CrossAxisAlignment.CENTER,
     )
