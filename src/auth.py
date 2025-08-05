@@ -14,22 +14,23 @@ def login(page, event, email_tf, password_tf, supabase):
         return
 
     try:
-        user_session = supabase.auth.sign_in_with_password({"email": email, "password": password})
-        if user_session.user is not None:
+        response = supabase.auth.sign_in_with_password({"email": email, "password": password})
+        user = response.user
+        if response.user is not None:
             # ✅ Store email using page.session (synchronous)
-            page.session.set("user_email", user_session.user.email)
-
-            page.snack_bar = SnackBar(Text(f"Logged in as {user_session.user.email}", bgcolor=Colors.GREEN))
-            page.snack_bar.open = True
+            page.session.set("user_email", response.user.email)
+            page.session.set("user_id", user.id)
+            page.snack_bar.open = SnackBar(Text(f"Logged in as {response.user.email}", bgcolor=Colors.GREEN))
+            print(f"Logged in as {response.user.email}")
             page.update()
             page.go("/chat")
         else:
-            page.snack_bar = SnackBar(Text("Login failed: Invalid credentials", bgcolor=Colors.RED))
-            page.snack_bar.open = True
+            page.snack_bar.open = SnackBar(Text("Login failed: Invalid credentials", bgcolor=Colors.RED))
+            print("Login failed: Invalid credentials")
             page.update()
     except Exception as e:
-        page.snack_bar = SnackBar(Text(f"Error: {str(e)}", bgcolor=Colors.RED))
-        page.snack_bar.open = True
+        page.snack_bar.open = SnackBar(Text(f"Error: {str(e)}", bgcolor=Colors.RED))
+        print(f"Error: {str(e)}")
         page.update()
 
 def signup(page, event, email_tf, password_tf, supabase):

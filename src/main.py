@@ -26,17 +26,21 @@ def main(page: ft.Page):
 
     # IMPROVED: This function now directly uses the 'route' passed to it.
     def route_change(e: ft.RouteChangeEvent):
-        user_email = page.session.get("user_email")
-        page.views.clear()
-
+        # If the user is navigating to the home page, clear the history.
         if e.route == "/":
+            page.views.clear()
             page.views.append(home_view(page, supabase, auth.login, auth.signup))
+        
+        # If the user is navigating to the chat page...
         elif e.route == "/chat":
-            if not user_email:
-                # If user is not logged in, redirect to home and stop processing this route.
+            user_id = page.session.get("user_id")
+            if not user_id:
+                # If not logged in, just redirect, don't change the view stack.
                 page.go("/")
                 return
-            page.views.append(chat_view(page, supabase, user_email))
+            
+            # Add the chat view on top of the home view.
+            page.views.append(chat_view(page, supabase, user_id))
         
         page.update()
 

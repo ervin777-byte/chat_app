@@ -4,12 +4,6 @@ import qrcode
 import io
 import base64
 
-# --- Helper Functions (Unchanged, they were correct) ---
-
-def create_user_id(email: str) -> str:
-    """Creates a unique, deterministic user ID from an email address."""
-    return hashlib.sha256(email.encode()).hexdigest()
-
 def generate_qr_code(data: str) -> str:
     """Generates a base64-encoded QR code image from text data."""
     qr = qrcode.QRCode(version=1, box_size=4, border=2)
@@ -25,14 +19,13 @@ def generate_qr_code(data: str) -> str:
 
 # --- Main Chat View ---
 
-def chat_view(page: ft.Page, supabase, user_email: str):
+def chat_view(page: ft.Page, supabase, user_id: str):
     """
     Constructs the chat view, handling message display, sending, and real-time updates.
     
     NOTE: Ensure your Supabase table 'messages' has Row-Level Security (RLS) enabled
     and a default value of 'now()' for the 'created_at' column.
     """
-    user_id = create_user_id(user_email)
     
     # This will hold the Supabase Realtime subscription object
     subscription = None
@@ -82,17 +75,29 @@ def chat_view(page: ft.Page, supabase, user_email: str):
         if not target_user_id:
             return
 
-        # CORRECTED: Fixed the Supabase .or_() filter syntax and added .execute().
-        filter1 = f"and(sender_id.eq.{user_id},receiver_id.eq.{target_user_id})"
-        filter2 = f"and(sender_id.eq.{target_user_id},receiver_id.eq.{user_id})"
-        
-        response = supabase.table("messages").select("*").or_(filter1, filter2).order("created_at").execute()
+        try:
+            # Query 1: Messages sent by you to the target
+            response1 = supabase.table("messages").select("*").match({
+                "sender_id": user_id,
+                "receiver_id": target_user_id
+            }).execute()
 
-        if hasattr(response, 'error') and response.error:
-            print(f"Error loading messages: {response.error}")
+            # Query 2: Messages sent by the target to you
+            response2 = supabase.table("messages").select("*").match({
+                "sender_id": target_user_id,
+                "receiver_id": user_id
+            }).execute()
+            
+            # Combine the data from both responses
+            all_data = (response1.data or []) + (response2.data or [])
+
+            # Sort the combined list by the 'created_at' timestamp
+            # This ensures the chat is in the correct chronological order
+            chat_messages = sorted(all_data, key=lambda msg: msg['created_at'])
+            
+        except Exception as e:
+            print(f"An error occurred loading messages: {e}")
             chat_messages = []
-        else:
-            chat_messages = response.data or []
         
         update_message_list()
 
@@ -100,8 +105,8 @@ def chat_view(page: ft.Page, supabase, user_email: str):
         """Inserts a new message into the Supabase table."""
         target_user_id = target_id_input.value.strip()
         if not target_user_id:
-            page.snack_bar = ft.SnackBar(ft.Text("Please connect to a user first."))
-            page.snack_bar.open = True
+            page.snack_bar.open = ft.SnackBar(ft.Text("Please connect to a user first."))
+            print("Please connect to a user first.")
             page.update()
             return
             
@@ -120,8 +125,9 @@ def chat_view(page: ft.Page, supabase, user_email: str):
         response = supabase.table("messages").insert(data_to_insert).execute()
         
         if hasattr(response, 'error') and response.error:
-            page.snack_bar = ft.SnackBar(ft.Text(f"Error sending message: {response.error.message}"))
-            page.snack_bar.open = True
+            page.snack_bar.open = ft.SnackBar(ft.Text(f"Error sending message: {response.error.message}"))
+            print(f"Error sending message: {response.error.message}")
+            page.update()
         else:
             # The Realtime listener will add the message to the UI, so no manual refresh is needed.
             input_message.value = ""
@@ -133,8 +139,8 @@ def chat_view(page: ft.Page, supabase, user_email: str):
         nonlocal subscription
         target_user_id = target_id_input.value.strip()
         if not target_user_id:
-            page.snack_bar = ft.SnackBar(ft.Text("Please enter a Target User ID."))
-            page.snack_bar.open = True
+            page.snack_bar.open = ft.SnackBar(ft.Text("Please enter a Target User ID."))
+            print("Please enter a Target User ID.")
             page.update()
             return
         
@@ -152,8 +158,8 @@ def chat_view(page: ft.Page, supabase, user_email: str):
             on_new_message
         ).subscribe()
 
-        page.snack_bar = ft.SnackBar(ft.Text(f"✅ Chatting with user {target_user_id[:8]}..."))
-        page.snack_bar.open = True
+        page.snack_bar.open = ft.SnackBar(ft.Text(f"✅ Chatting with user {target_user_id[:8]}..."))
+        print(f"✅ Chatting with user {target_user_id[:8]}...")
         page.update()
 
     # --- Cleanup ---
