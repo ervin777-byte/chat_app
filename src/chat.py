@@ -175,7 +175,7 @@ def chat_view(page: ft.Page, supabase, user_id: str):
 
     # --- Button and Input Event Handlers ---
     send_btn = ft.ElevatedButton("Send", on_click=send_message)
-    connect_btn = ft.ElevatedButton("Chat", on_click=connect_to_chat)
+    connect_btn = ft.ElevatedButton("connect/refresh", on_click=connect_to_chat)
 
     # --- View Layout ---
     return ft.View(
@@ -201,6 +201,6 @@ def chat_view(page: ft.Page, supabase, user_id: str):
                 expand=True,
             )
         ],
-        appbar=ft.AppBar(title=ft.Text("Flet & Supabase Chat 💬"), bgcolor=ft.Colors.ON_SURFACE_VARIANT),
+        appbar=ft.AppBar(title=ft.Text("Flet & Supabase Chat 💬"), bgcolor=ft.Colors.BLUE),
         padding=20,
     )
