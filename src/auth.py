@@ -29,9 +29,9 @@ def login(page, event, email_tf, password_tf, supabase):
             print("Login failed: Invalid credentials")
             page.update()
     except Exception as e:
-        page.snack_bar.open = SnackBar(Text(f"Error: {str(e)}", bgcolor=Colors.RED))
         print(f"Error: {str(e)}")
-        page.update()
+        # page.snack_bar.open = SnackBar(Text(f"Error: {str(e)}", bgcolor=Colors.RED))
+        # page.update()
 
 def signup(page, event, email_tf, password_tf, supabase):
     email = email_tf.value.strip()

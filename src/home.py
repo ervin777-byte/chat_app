@@ -11,7 +11,7 @@ def home_view(page: ft.Page, supabase, login_func, signup_func):
 
     def on_login_click(e):
         if not email.value or not password.value:
-            message.value = "Please fill in both fields"
+            message.value = "Please fill in both fields. also it needs valid e-mail for confirmation and 6 digit or longer password needed."
             page.update()
             return
         login_func(page, e, email, password, supabase)
@@ -19,7 +19,7 @@ def home_view(page: ft.Page, supabase, login_func, signup_func):
 
     def on_signup_click(e):
         if not email.value or not password.value:
-            message.value = "Please fill in both fields"
+            message.value = "Please fill in both fields.  also it needs valid e-mail for confirmation and 6 digit or longer password needed."
             page.update()
             return
         signup_func(page, e, email, password, supabase)
