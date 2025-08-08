@@ -25,9 +25,9 @@ def login(page, event, email_tf, password_tf, supabase):
             page.update()
             page.go("/chat")
         else:
-            page.snack_bar.open = SnackBar(Text("Login failed: Invalid credentials", bgcolor=Colors.RED))
             print("Login failed: Invalid credentials")
-            page.update()
+            # page.snack_bar.open = SnackBar(Text("Login failed: Invalid credentials", bgcolor=Colors.RED))
+            # page.update()
     except Exception as e:
         print(f"Error: {str(e)}")
         # page.snack_bar.open = SnackBar(Text(f"Error: {str(e)}", bgcolor=Colors.RED))
