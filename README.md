@@ -1,4 +1,4 @@
-# CurrencyConverterApp app
+# chat app
 
 ## Run the app
 
