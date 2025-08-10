@@ -8,8 +8,7 @@ def login(page, event, email_tf, password_tf, supabase):
     password = password_tf.value.strip()
 
     if not email or not password:
-        page.snack_bar = SnackBar(Text("Email and password required", bgcolor=Colors.RED))
-        page.snack_bar.open = True
+        page.open(SnackBar(Text("Email and password required", bgcolor=Colors.RED)))
         page.update()
         return
 
@@ -20,27 +19,22 @@ def login(page, event, email_tf, password_tf, supabase):
             # ✅ Store email using page.session (synchronous)
             page.session.set("user_email", response.user.email)
             page.session.set("user_id", user.id)
-            page.snack_bar.open = SnackBar(Text(f"Logged in as {response.user.email}", bgcolor=Colors.GREEN))
-            print(f"Logged in as {response.user.email}")
+            page.open(SnackBar(Text(f"Logged in as {response.user.email}", bgcolor=Colors.GREEN)))
             page.update()
             page.go("/chat")
         else:
-            print("Login failed: Invalid credentials")
-            # page.snack_bar.open = SnackBar(Text("Login failed: Invalid credentials", bgcolor=Colors.RED))
-            # page.update()
+            page.open(SnackBar(Text("Login failed: Invalid credentials", bgcolor=Colors.RED)))
+            page.update()
     except Exception as e:
-        print(f"Error: {str(e)}")
-        # page.snack_bar.open = SnackBar(Text(f"Error: {str(e)}", bgcolor=Colors.RED))
-        # page.update()
+        page.open(SnackBar(Text(f"Error: {str(e)}", bgcolor=Colors.RED)))
+        page.update()
 
 def signup(page, event, email_tf, password_tf, supabase):
     email = email_tf.value.strip()
     password = password_tf.value.strip()
 
     if not email or not password:
-        page.snack_bar = SnackBar(Text("Email and password required", bgcolor=Colors.RED))
-        page.snack_bar.open = True
-        print("Email and password required")
+        page.open(SnackBar(Text("Email and password required", bgcolor=Colors.RED)))
         page.update()
         return
 
@@ -52,21 +46,15 @@ def signup(page, event, email_tf, password_tf, supabase):
             # ✅ Use page.session for synchronous session storage
             page.session.set("user_email", user.user.email)
 
-            page.snack_bar = SnackBar(Text(message, bgcolor=Colors.GREEN))
-            page.snack_bar.open = True
-            print(message)
+            page.open(SnackBar(Text(message, bgcolor=Colors.GREEN)))
             page.update()
 
             # ✅ Optionally redirect after signup
             page.go("/chat")
         else:
             message = "Sign up failed. No user returned."
-            page.snack_bar = SnackBar(Text(message, bgcolor=Colors.RED))
-            page.snack_bar.open = True
-            print(message)
+            page.open(SnackBar(Text(message, bgcolor=Colors.RED)))
             page.update()
     except Exception as e:
-        page.snack_bar = SnackBar(Text(f"Error: {str(e)}", bgcolor=Colors.RED))
-        page.snack_bar.open = True
-        print(f"Error: {str(e)}")
+        page.open(SnackBar(Text(f"Error: {str(e)}", bgcolor=Colors.RED)))
         page.update()
