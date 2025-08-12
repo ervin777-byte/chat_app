@@ -244,22 +244,12 @@ def chat_view(page: ft.Page, supabase, user_id: str):
     ## MODIFIED: Initial data loading
     load_contacts()
 
-    # --- View Layout ---
+    ## MODIFIED: The main layout is simplified, moving the user ID card to the drawer.
     return ft.View(
         "/chat",
         controls=[
             ft.Column(
                 controls=[
-                    ft.Card(
-                        content=ft.Container(
-                            padding=15,
-                            content=ft.Column([
-                                ft.Text("Your User ID", weight=ft.FontWeight.BOLD),
-                                ft.Row([qr_img, ft.Text(user_id, selectable=True, expand=True)], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                                ft.Text("Share this ID or QR code with a friend.", size=12, italic=True, color=ft.Colors.ON_SURFACE_VARIANT),
-                            ]),
-                        )
-                    ),
                     ft.Row([target_id_input, connect_btn]),
                     ft.Divider(height=10),
                     message_list,
@@ -268,6 +258,43 @@ def chat_view(page: ft.Page, supabase, user_id: str):
                 expand=True,
             )
         ],
-        appbar=ft.AppBar(title=ft.Text("Flet & Supabase Chat 💬"), bgcolor=ft.Colors.BLUE),
+        ## MODIFIED: Appbar now has an 'actions' button to open the drawer.
+        appbar=ft.AppBar(
+            title=ft.Text("Flet & Supabase Chat 💬"),
+            bgcolor=ft.Colors.BLUE,
+            actions=[
+                ft.IconButton(
+                    ft.icons.PERSON,
+                    on_click=open_drawer,
+                    tooltip="My Info & Contacts"
+                )
+            ]
+        ),
         padding=20,
+        ## NEW: Add the drawer to the view.
+        end_drawer=ft.NavigationDrawer(
+            controls=[
+                ft.Container(
+                    padding=15,
+                    content=ft.Column([
+                        ft.Text("Your User ID", weight=ft.FontWeight.BOLD),
+                        qr_img,
+                        ft.TextField(value=user_id, read_only=True, multiline=True),
+                        ft.Text("Share this ID or QR code with a friend.", size=12, italic=True),
+                    ])
+                ),
+                ft.Divider(),
+                ft.Container(
+                    padding=15,
+                    content=ft.Column([
+                        ft.Text("Add a New Contact", weight=ft.FontWeight.BOLD),
+                        new_contact_id_input,
+                        ft.ElevatedButton("Save Contact", on_click=add_contact, icon=ft.icons.SAVE),
+                    ])
+                ),
+                ft.Divider(),
+                ft.Text("My Contacts", weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
+                contacts_list_view,
+            ],
+        )
     )
