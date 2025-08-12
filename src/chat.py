@@ -238,7 +238,8 @@ def chat_view(page: ft.Page, supabase, user_id: str):
 
     ## NEW: Function to open the right-side drawer
     def open_drawer(e):
-        page.end_drawer.open = True
+        current_view = page.views[-1]   # last view in stack
+        current_view.end_drawer.open = True
         page.update()
 
     ## MODIFIED: Initial data loading
