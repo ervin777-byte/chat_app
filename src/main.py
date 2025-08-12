@@ -54,8 +54,8 @@ def main(page: ft.Page):
     page.on_view_pop = view_pop
     
     # This call triggers the initial page load 🚀
-    page.go(page.route)
+    page.go("/")
 
 # It's good practice to run the app within a name==main block.
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.app(target=main, view=ft.AppView.WEB_BROWSER)

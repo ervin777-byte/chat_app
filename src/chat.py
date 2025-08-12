@@ -34,11 +34,20 @@ def chat_view(page: ft.Page, supabase, user_id: str):
     # --- Flet UI Controls ---
 
     # CORRECTED: Added auto_scroll=True to automatically scroll down on new messages.
-    message_list = ft.ListView(expand=True, spacing=10, padding=20, auto_scroll=True)
+    # message_list = ft.ListView(expand=True, spacing=10, padding=20, auto_scroll=True)
     
+    # input_message = ft.TextField(hint_text="Type a message...", expand=True, on_submit=lambda e: send_message(e))
+    # target_id_input = ft.TextField(label="Enter Target User ID", expand=True)
+    # qr_img = ft.Image(src=generate_qr_code(user_id), width=150, height=150)
+
+    message_list = ft.ListView(expand=True, spacing=10, padding=20, auto_scroll=True)
     input_message = ft.TextField(hint_text="Type a message...", expand=True, on_submit=lambda e: send_message(e))
-    target_id_input = ft.TextField(label="Enter Target User ID", expand=True)
+    target_id_input = ft.TextField(label="Enter or select a contact's User ID", expand=True)
+    
+    ## NEW: Controls for the drawer (user info & contacts)
     qr_img = ft.Image(src=generate_qr_code(user_id), width=150, height=150)
+    new_contact_id_input = ft.TextField(label="Enter Contact's UUID")
+    contacts_list_view = ft.ListView(expand=True, spacing=5)
 
     # --- Core Functions ---
 
@@ -105,8 +114,7 @@ def chat_view(page: ft.Page, supabase, user_id: str):
         """Inserts a new message into the Supabase table."""
         target_user_id = target_id_input.value.strip()
         if not target_user_id:
-            page.snack_bar.open = ft.SnackBar(ft.Text("Please connect to a user first."))
-            print("Please connect to a user first.")
+            page.open(ft.SnackBar(ft.Text("Please connect to a user first.")))
             page.update()
             return
             
@@ -125,8 +133,7 @@ def chat_view(page: ft.Page, supabase, user_id: str):
         response = supabase.table("messages").insert(data_to_insert).execute()
         
         if hasattr(response, 'error') and response.error:
-            page.snack_bar.open = ft.SnackBar(ft.Text(f"Error sending message: {response.error.message}"))
-            print(f"Error sending message: {response.error.message}")
+            page.open(ft.SnackBar(ft.Text(f"Error sending message: {response.error.message}")))
             page.update()
         else:
             # The Realtime listener will add the message to the UI, so no manual refresh is needed.
@@ -139,8 +146,7 @@ def chat_view(page: ft.Page, supabase, user_id: str):
         nonlocal subscription
         target_user_id = target_id_input.value.strip()
         if not target_user_id:
-            page.snack_bar.open = ft.SnackBar(ft.Text("Please enter a Target User ID."))
-            print("Please enter a Target User ID.")
+            page.open(ft.SnackBar(ft.Text("Please enter a Target User ID.")))
             page.update()
             return
         
@@ -158,8 +164,61 @@ def chat_view(page: ft.Page, supabase, user_id: str):
             on_new_message
         ).subscribe()
 
-        page.snack_bar.open = ft.SnackBar(ft.Text(f"✅ Chatting with user {target_user_id[:8]}..."))
-        print(f"✅ Chatting with user {target_user_id[:8]}...")
+        page.open(ft.SnackBar(ft.Text(f"✅ Chatting with user {target_user_id[:8]}...")))
+        page.update()
+
+    ## NEW: Contact Management Functions
+    def add_contact(e):
+        """Saves a new contact's UUID to the Supabase 'contacts' table."""
+        contact_id = new_contact_id_input.value.strip()
+        if not contact_id:
+            # You can add a snackbar here for feedback
+            return
+
+        try:
+            # Check if contact already exists to avoid duplicates
+            existing = supabase.table("contacts").select("id").match({"user_id": user_id, "contact_uuid": contact_id}).execute()
+            if not existing.data:
+                supabase.table("contacts").insert({
+                    "user_id": user_id,
+                    "contact_uuid": contact_id
+                }).execute()
+                page.open(ft.SnackBar(ft.Text("✅ Contact saved!")))
+                load_contacts() # Refresh the list
+                new_contact_id_input.value = ""
+            else:
+                page.open(ft.SnackBar(ft.Text("ℹ️ Contact already exists.")))
+
+        except Exception as e:
+            page.snack_bar = ft.SnackBar(ft.Text(f"Error saving contact: {e}"))
+
+        page.update()
+
+    def load_contacts():
+        """Loads the user's saved contacts from Supabase into the drawer."""
+        contacts_list_view.controls.clear()
+        try:
+            response = supabase.table("contacts").select("contact_uuid").eq("user_id", user_id).execute()
+            if response.data:
+                for contact in response.data:
+                    contact_uuid = contact['contact_uuid']
+                    contacts_list_view.controls.append(
+                        ft.ListTile(
+                            leading=ft.Icon(ft.icons.PERSON_OUTLINE),
+                            title=ft.Text(f"User: {contact_uuid[:8]}..."),
+                            # Use a lambda to capture the correct uuid for the on_click event
+                            on_click=lambda _, c=contact_uuid: start_chat_with_contact(c)
+                        )
+                    )
+        except Exception as e:
+            print(f"Error loading contacts: {e}") # Print error to console
+        page.update()
+
+    def start_chat_with_contact(contact_uuid: str):
+        """Fills the target ID input and connects to the selected contact."""
+        target_id_input.value = contact_uuid
+        page.end_drawer.open = False # Close the drawer
+        connect_to_chat(None) # Call the existing connect function
         page.update()
 
     # --- Cleanup ---
@@ -176,6 +235,14 @@ def chat_view(page: ft.Page, supabase, user_id: str):
     # --- Button and Input Event Handlers ---
     send_btn = ft.ElevatedButton("Send", on_click=send_message)
     connect_btn = ft.ElevatedButton("connect/refresh", on_click=connect_to_chat)
+
+    ## NEW: Function to open the right-side drawer
+    def open_drawer(e):
+        page.end_drawer.open = True
+        page.update()
+
+    ## MODIFIED: Initial data loading
+    load_contacts()
 
     # --- View Layout ---
     return ft.View(
