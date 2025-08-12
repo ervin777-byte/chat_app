@@ -264,7 +264,7 @@ def chat_view(page: ft.Page, supabase, user_id: str):
             bgcolor=ft.Colors.BLUE,
             actions=[
                 ft.IconButton(
-                    ft.icons.PERSON,
+                    ft.Icons.PERSON,
                     on_click=open_drawer,
                     tooltip="My Info & Contacts"
                 )
@@ -289,7 +289,7 @@ def chat_view(page: ft.Page, supabase, user_id: str):
                     content=ft.Column([
                         ft.Text("Add a New Contact", weight=ft.FontWeight.BOLD),
                         new_contact_id_input,
-                        ft.ElevatedButton("Save Contact", on_click=add_contact, icon=ft.icons.SAVE),
+                        ft.ElevatedButton("Save Contact", on_click=add_contact, icon=ft.Icons.SAVE),
                     ])
                 ),
                 ft.Divider(),
