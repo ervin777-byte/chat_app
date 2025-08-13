@@ -32,21 +32,16 @@ def chat_view(page: ft.Page, supabase, user_id: str):
     chat_messages = []
 
     # --- Flet UI Controls ---
+    current_chat_partner_uuid = None
 
-    # CORRECTED: Added auto_scroll=True to automatically scroll down on new messages.
-    # message_list = ft.ListView(expand=True, spacing=10, padding=20, auto_scroll=True)
-    
-    # input_message = ft.TextField(hint_text="Type a message...", expand=True, on_submit=lambda e: send_message(e))
-    # target_id_input = ft.TextField(label="Enter Target User ID", expand=True)
-    # qr_img = ft.Image(src=generate_qr_code(user_id), width=150, height=150)
+    chat_app_bar_title = ft.Text("Flet & Supabase Chat 💬")
 
     message_list = ft.ListView(expand=True, spacing=10, padding=20, auto_scroll=True)
     input_message = ft.TextField(hint_text="Type a message...", expand=True, on_submit=lambda e: send_message(e))
-    target_id_input = ft.TextField(label="Enter or select a contact's User ID", expand=True)
-    
-    ## NEW: Controls for the drawer (user info & contacts)
+
+    user_email = supabase.auth.get_user().user.email
     qr_img = ft.Image(src=generate_qr_code(user_id), width=150, height=150)
-    new_contact_id_input = ft.TextField(label="Enter Contact's UUID")
+    new_contact_id_input = ft.TextField(label="Enter Contact's Email")
     contacts_list_view = ft.ListView(expand=True, spacing=5)
 
     # --- Core Functions ---
@@ -141,6 +136,40 @@ def chat_view(page: ft.Page, supabase, user_id: str):
         
         page.update()
 
+    def activate_realtime_listener():
+        nonlocal subscription
+        if subscription:
+            supabase.remove_subscription(subscription)
+
+        subscription = supabase.realtime.channel("public:messages").on(
+            "postgres_changes",
+            {"event": "INSERT", "schema": "public", "table": "messages"},
+            on_new_message
+        ).subscribe()
+
+    def add_contact(e):
+        """Saves a new contact's email to the Supabase 'contacts' table."""
+        contact_email = new_contact_input.value.strip().lower()
+        if not contact_email:
+            return
+
+        try:
+            # Check if contact already exists
+            existing = supabase.table("contacts").select("id").match({"user_id": user_id, "contact_email": contact_email}).execute()
+            if not existing.data:
+                supabase.table("contacts").insert({ "user_id": user_id, "contact_email": contact_email }).execute()
+                page.snack_bar = ft.SnackBar(ft.Text("✅ Contact saved!"))
+                load_contacts()
+                new_contact_input.value = ""
+            else:
+                page.snack_bar = ft.SnackBar(ft.Text("ℹ️ Contact already exists."))
+
+        except Exception as ex:
+            page.snack_bar = ft.SnackBar(ft.Text(f"Error saving contact: {ex}"))
+        
+        page.snack_bar.open = True
+        page.update()
+
     def connect_to_chat(e):
         """Connects to a chat, loads history, and subscribes to real-time updates."""
         nonlocal subscription
@@ -201,25 +230,49 @@ def chat_view(page: ft.Page, supabase, user_id: str):
             response = supabase.table("contacts").select("contact_uuid").eq("user_id", user_id).execute()
             if response.data:
                 for contact in response.data:
-                    contact_uuid = contact['contact_uuid']
+                    email = contact['contact_email']
                     contacts_list_view.controls.append(
                         ft.ListTile(
                             leading=ft.Icon(ft.icons.PERSON_OUTLINE),
-                            title=ft.Text(f"User: {contact_uuid[:8]}..."),
-                            # Use a lambda to capture the correct uuid for the on_click event
-                            on_click=lambda _, c=contact_uuid: start_chat_with_contact(c)
+                            title=ft.Text(email),
+                            on_click=lambda _, c=email: start_chat_with_contact(c)
                         )
                     )
         except Exception as e:
             print(f"Error loading contacts: {e}") # Print error to console
         page.update()
 
-    def start_chat_with_contact(contact_uuid: str):
-        """Fills the target ID input and connects to the selected contact."""
-        target_id_input.value = contact_uuid
-        page.end_drawer.open = False # Close the drawer
-        connect_to_chat(None) # Call the existing connect function
+    def start_chat_with_contact(contact_email: str):
+        """Finds a contact's UUID via RPC and loads the chat with them."""
+        nonlocal current_chat_partner_uuid
+        page.end_drawer.open = False
+        page.snack_bar = ft.SnackBar(ft.Text(f"Loading chat with {contact_email}..."))
+        page.snack_bar.open = True
         page.update()
+
+        try:
+            # Use the RPC function we created to get the UUID from the email
+            response = supabase.rpc('get_uuid_from_email', {'email_to_find': contact_email}).execute()
+            target_uuid = response.data
+            
+            if not target_uuid:
+                page.snack_bar = ft.SnackBar(ft.Text("❌ User not found. Please check the email.", bgcolor=ft.colors.ERROR))
+                page.snack_bar.open = True
+                page.update()
+                return
+
+            # Set the global chat partner UUID
+            current_chat_partner_uuid = target_uuid
+            # Update the app bar title
+            chat_app_bar_title.value = f"Chat with {contact_email}"
+            # Load the message history
+            load_messages(target_uuid)
+            
+        except Exception as e:
+            print(f"Error starting chat: {e}")
+            page.snack_bar = ft.SnackBar(ft.Text("An error occurred.", bgcolor=ft.colors.ERROR))
+            page.snack_bar.open = True
+            page.update()
 
     # --- Cleanup ---
     
@@ -244,15 +297,13 @@ def chat_view(page: ft.Page, supabase, user_id: str):
 
     ## MODIFIED: Initial data loading
     load_contacts()
-
+    activate_realtime_listener()
     ## MODIFIED: The main layout is simplified, moving the user ID card to the drawer.
     return ft.View(
         "/chat",
         controls=[
             ft.Column(
                 controls=[
-                    ft.Row([target_id_input, connect_btn]),
-                    ft.Divider(height=10),
                     message_list,
                     ft.Row([input_message, send_btn]),
                 ],
